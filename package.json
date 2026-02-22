@@ -1,0 +1,47 @@
+{
+  "name": "zapbridge",
+  "version": "1.0.0",
+  "description": "ZapBridge é uma API para envio de mensagens via WhatsApp, construída com Node.js e TypeScript, utilizando o Baileys para conexão com o WhatsApp Web. O projeto foi desenvolvido para facilitar integrações, automações e notificações de forma simples, escalável e eficiente.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc && node -e \"const fs = require('fs'); if (fs.existsSync('src/docs')) { fs.cpSync('src/docs', 'dist/docs', { recursive: true }); }\"",
+    "start": "node dist/server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pauloadson/ZapBridge.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/pauloadson/ZapBridge/issues"
+  },
+  "homepage": "https://github.com/pauloadson/ZapBridge#readme",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^7.0.0-rc.9",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "helmet": "^8.1.0",
+    "morgan": "^1.10.1",
+    "qrcode": "^1.5.4",
+    "swagger-ui-express": "^5.0.1",
+    "yaml": "^2.8.2",
+    "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/morgan": "^1.9.10",
+    "@types/node": "^25.2.3",
+    "@types/qrcode": "^1.5.6",
+    "@types/swagger-ui-express": "^4.1.8",
+    "tsx": "^4.21.0"
+  }
+}

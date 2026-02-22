@@ -1,0 +1,201 @@
+openapi: 3.0.0
+info:
+  title: ZapBridge API
+  version: 1.0.0
+  description: API para envio de mensagens via WhatsApp usando Baileys
+
+servers:
+  - url: {SERVER_URL}
+    description: URL da API (definida via variável de ambiente)
+
+tags:
+  - name: Health
+    description: Verificação de status do serviço
+  - name: Session
+    description: Gerenciamento da sessão do WhatsApp
+  - name: Messages
+    description: Envio de mensagens
+
+paths:
+  /api/v1/health:
+    get:
+      tags:
+        - Health
+      summary: Verificar integridade do serviço
+      responses:
+        "200":
+          description: Serviço em execução
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  service:
+                    type: string
+                  status:
+                    type: string
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /api/v1/session/status:
+    get:
+      tags:
+        - Session
+      summary: Verificar status da conexão
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Status retornado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  connected:
+                    type: boolean
+                  hasQR:
+                    type: boolean
+
+  /api/v1/session/qr:
+    get:
+      tags:
+        - Session
+      summary: Obter QR Code em Base64
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: QR Code retornado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  qr:
+                    type: string
+                    description: String Base64 da imagem QR Code
+        "404":
+          description: QR não disponível ou já conectado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  connected:
+                    type: boolean
+
+  /api/v1/session/disconnect:
+    post:
+      tags:
+        - Session
+      summary: Desconectar e fazer logout do WhatsApp
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Sessão encerrada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  /api/v1/session/restart:
+    post:
+      tags:
+        - Session
+      summary: Reiniciar o serviço de conexão
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Reiniciando conexão
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  /api/v1/messages/send:
+    post:
+      tags:
+        - Messages
+      summary: Enviar mensagem via WhatsApp
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - number
+                - message
+              properties:
+                number:
+                  type: string
+                  example: "5562999999999"
+                  description: Número com DDI e DDD (ex 5562999999999)
+                message:
+                  type: string
+                  example: "Olá via API 🚀"
+                delayMessage:
+                  type: number
+                  description: Delay em segundos antes de enviar a mensagem (1-15 seg). Default 1~3 seg.
+                  example: 3
+                delayTyping:
+                  type: number
+                  description: Tempo que ficará com o status "Digitando..." (1-15 seg). Default 0.
+                  example: 5
+      responses:
+        "200":
+          description: Mensagem enviada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        "400":
+          description: Dados inválidos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  error:
+                    type: string
+        "500":
+          description: Erro ao enviar mensagem
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  error:
+                    type: string
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
