@@ -14,18 +14,24 @@ O projeto foi desenvolvido para facilitar integrações, automações e notifica
 
 ## ✨ Funcionalidades
 
+> ⚠️ **Nota:** No momento, o ZapBridge suporta apenas **uma sessão (instância) ativa por vez**.
+
 ### 1. Gerenciamento de Sessão
+- **Sessão Única**: Gerenciamento de uma única instância do WhatsApp Web.
 - **QR Code**: Geração de QR Code em Base64 para autenticação.
 - **Status da Conexão**: Verificação em tempo real se a instância está conectada.
-- **Desconexão/Logout**: Encerramento seguro da sessão.
+- **Desconexão/Logout**: Encerramento seguro da sessão e limpeza dos dados de autenticação.
 - **Reinicialização**: Comando para reiniciar o serviço de conexão.
 
 ### 2. Envio de Mensagens Inteligente
 - **Envio Simples**: Envio de mensagens de texto para qualquer número.
-- **Delay de Mensagem (`delayMessage`)**: Intervalo configurável (1-15s) entre o processamento e o envio real da mensagem (Padrão: 1-3s aleatório).
-- **Simulação de Digitação (`delayTyping`)**: Exibe o status "Digitando..." no WhatsApp do destinatário por um tempo determinado (1-15s).
+- **Delay de Mensagem (`delayMessage`)**: Intervalo configurável (em segundos) entre o processamento e o envio real da mensagem (Padrão: 1-3s aleatório).
+- **Simulação de Digitação (`delayTyping`)**: Exibe o status "Digitando..." no WhatsApp do destinatário por um tempo determinado (em segundos).
 
-### 3. Monitoramento
+### 3. Segurança
+- **Autenticação via Bearer Token**: Proteção de endpoints sensíveis (Sessão e Mensagens) utilizando uma chave de API configurável.
+
+### 4. Monitoramento
 - **Health Check**: Endpoint para verificar a integridade e o uptime do serviço.
 
 ## 🚀 Como Executar
@@ -47,8 +53,12 @@ cd ZapBridge
 npm install
 ```
 
-3. Configure as variáveis de ambiente (opcional):
-Crie um arquivo `.env` baseado no `.env.example`.
+3. Configure as variáveis de ambiente:
+Crie um arquivo `.env` baseado no `.env.example`:
+```bash
+cp .env.example .env
+```
+Edite o arquivo `.env` e defina sua `API_KEY` e outras configurações.
 
 ### Execução
 
@@ -69,15 +79,35 @@ A documentação interativa da API está disponível em:
 - **UI**: `http://localhost:3000/docs`
 - **JSON**: `http://localhost:3000/docs.json`
 
+## 🔐 Autenticação
+
+Todos os endpoints (exceto `/api/v1/health`) requerem autenticação via Bearer Token.
+
+No cabeçalho da requisição, inclua:
+`Authorization: Bearer SEU_API_KEY`
+
 ## 🛣️ Principais Endpoints
 
-| Método | Rota | Descrição |
-|--------|------|-------------|
-| GET | `/api/v1/health` | Status da API |
-| GET | `/api/v1/session/status` | Status da conexão WhatsApp |
-| GET | `/api/v1/session/qr` | Obtém o QR Code atual |
-| POST | `/api/v1/session/disconnect` | Desconecta a sessão |
-| POST | `/api/v1/messages/send` | Envia mensagem com opções de delay |
+| Método | Rota | Descrição | Requer Auth |
+|--------|------|-------------|-------------|
+| GET | `/api/v1/health` | Status da API | Não |
+| GET | `/api/v1/session/status` | Status da conexão WhatsApp | Sim |
+| GET | `/api/v1/session/qr` | Obtém o QR Code atual (Base64) | Sim |
+| POST | `/api/v1/session/disconnect` | Desconecta e limpa a sessão | Sim |
+| POST | `/api/v1/session/restart` | Reinicia o serviço de conexão | Sim |
+| POST | `/api/v1/messages/send` | Envia mensagem com opções de delay | Sim |
+
+### Exemplo de Envio de Mensagem
+
+**POST** `/api/v1/messages/send`
+```json
+{
+  "number": "5511999999999",
+  "message": "Olá, esta é uma mensagem de teste!",
+  "delayTyping": 5,
+  "delayMessage": 2
+}
+```
 
 ---
 Desenvolvido por [Paulo Adson](https://github.com/pauloadson)
