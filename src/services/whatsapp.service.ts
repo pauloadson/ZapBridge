@@ -23,10 +23,19 @@ class WhatsAppService {
     this.isConnecting = true;
     const { state, saveCreds } = await useMultiFileAuthState("auth");
 
+    // Limpa listeners antigos se existirem
+    if (this.sock) {
+      this.sock.ev.removeAllListeners("connection.update");
+      this.sock.ev.removeAllListeners("creds.update");
+    }
+
     this.sock = makeWASocket({
       auth: state,
       printQRInTerminal: false,
-      logger: pino({ level: "error" }), // Silencia os logs repetitivos do Baileys
+      logger: pino({ level: "error" }),
+      browser: ["Ubuntu", "Chrome", "20.0.04"], // Identificação mais estável
+      connectTimeoutMs: 60000,
+      defaultQueryTimeoutMs: 0,
     });
 
     this.sock.ev.on("creds.update", saveCreds);
@@ -34,7 +43,6 @@ class WhatsAppService {
     this.sock.ev.on("connection.update", async (update: any) => {
       const { connection, lastDisconnect, qr } = update;
 
-      // 🔥 Gerar QR em Base64
       if (qr) {
         this.currentQR = qr;
         this.qrBase64 = await QRCode.toDataURL(qr);
@@ -54,13 +62,17 @@ class WhatsAppService {
         this.isConnecting = false;
 
         const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
+        
+        // Se for 401 (Logged Out), não reconecta automaticamente
         const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
 
         console.log(`❌ Conexão fechada. Código: ${statusCode}. Reconectar?`, shouldReconnect);
 
         if (shouldReconnect) {
-          console.log("⏳ Aguardando 5 segundos para tentar reconectar...");
-          await this.sleep(5000);
+          // Se for erro 405 ou 428, espera um pouco mais (10s em vez de 5s)
+          const delay = (statusCode === 405 || statusCode === 428) ? 10000 : 5000;
+          console.log(`⏳ Aguardando ${delay / 1000} segundos para tentar reconectar...`);
+          await this.sleep(delay);
           this.connect();
         }
       }
@@ -75,27 +87,37 @@ class WhatsAppService {
     return {
       connected: this.isConnected,
       hasQR: !!this.qrBase64,
+      isConnecting: this.isConnecting
     };
   }
 
   async disconnect() {
+    this.isConnected = false;
+    this.isConnecting = false;
+
     if (this.sock) {
       try {
+        // Remove os listeners antes de fechar para o 'close' não disparar o reconnect
+        this.sock.ev.removeAllListeners("connection.update");
         await this.sock.logout();
       } catch (error) {
         console.error("Erro ao fazer logout:", error);
       }
       this.sock = null;
-      this.isConnected = false;
       this.qrBase64 = null;
     }
 
     if (fs.existsSync("auth")) {
-      fs.rmSync("auth", { recursive: true, force: true });
-      console.log("📂 Pasta 'auth' removida com sucesso!");
+      try {
+        fs.rmSync("auth", { recursive: true, force: true });
+        console.log("📂 Pasta 'auth' removida com sucesso!");
+      } catch (err) {
+        console.error("Erro ao remover pasta 'auth':", err);
+      }
     }
 
-    // Inicia uma nova conexão limpa para gerar um novo QR Code
+    // Aguarda um momento antes de iniciar uma nova conexão limpa
+    await this.sleep(2000);
     await this.connect();
   }
 
