@@ -49,6 +49,8 @@ class WhatsAppService {
         console.log("❌ Conexão fechada. Reconectar?", shouldReconnect);
 
         if (shouldReconnect) {
+          console.log("⏳ Aguardando 5 segundos para tentar reconectar...");
+          await this.sleep(5000);
           this.connect();
         }
       }
@@ -89,7 +91,6 @@ class WhatsAppService {
 
   async restart() {
     await this.disconnect();
-    await this.connect();
   }
 
   private sleep(ms: number) {
