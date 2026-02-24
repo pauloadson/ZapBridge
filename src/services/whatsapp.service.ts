@@ -1,6 +1,8 @@
 import makeWASocket, {
   useMultiFileAuthState,
   DisconnectReason,
+  Browsers,
+  fetchLatestBaileysVersion,
 } from "@whiskeysockets/baileys";
 import { Boom } from "@hapi/boom";
 import QRCode from "qrcode";
@@ -21,6 +23,11 @@ class WhatsAppService {
     }
 
     this.isConnecting = true;
+    
+    // Busca a versão mais recente do WhatsApp Web
+    const { version, isLatest } = await fetchLatestBaileysVersion();
+    console.log(`🌐 Usando WhatsApp Web v${version.join(".")}. É a mais recente? ${isLatest}`);
+
     const { state, saveCreds } = await useMultiFileAuthState("auth");
 
     // Limpa listeners antigos se existirem
@@ -30,10 +37,13 @@ class WhatsAppService {
     }
 
     this.sock = makeWASocket({
+      version,
       auth: state,
       printQRInTerminal: false,
-      logger: pino({ level: "error" }),
-      browser: ["Ubuntu", "Chrome", "20.0.04"], // Identificação mais estável
+      logger: pino({ level: "error" }), // Voltando para error para não poluir, já sabemos o erro
+      browser: Browsers.macOS("Desktop"),
+      syncFullHistory: false,
+      markOnlineOnConnect: false,
       connectTimeoutMs: 60000,
       defaultQueryTimeoutMs: 0,
     });
@@ -64,13 +74,19 @@ class WhatsAppService {
         const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
         
         // Se for 401 (Logged Out), não reconecta automaticamente
-        const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+        // Se for 405, a sessão geralmente está corrompida e precisa de limpeza
+        const isLoggedOut = statusCode === DisconnectReason.loggedOut;
+        const isMethodNotAllowed = statusCode === 405;
+        const shouldReconnect = !isLoggedOut && !isMethodNotAllowed;
 
         console.log(`❌ Conexão fechada. Código: ${statusCode}. Reconectar?`, shouldReconnect);
 
+        if (isMethodNotAllowed) {
+          console.log("⚠️ Erro 405 detectado: A sessão pode estar corrompida. Tente limpar a pasta 'auth' ou usar o endpoint de restart.");
+        }
+
         if (shouldReconnect) {
-          // Se for erro 405 ou 428, espera um pouco mais (10s em vez de 5s)
-          const delay = (statusCode === 405 || statusCode === 428) ? 10000 : 5000;
+          const delay = (statusCode === 428) ? 10000 : 5000;
           console.log(`⏳ Aguardando ${delay / 1000} segundos para tentar reconectar...`);
           await this.sleep(delay);
           this.connect();
