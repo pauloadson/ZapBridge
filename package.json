@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "tsx watch src/server.ts",
-    "build": "tsc && node -e \"const fs = require('fs'); if (fs.existsSync('src/docs')) { fs.cpSync('src/docs', 'dist/docs', { recursive: true }); }\"",
+    "build": "rm -rf dist && tsc && node -e \"const fs = require('fs'); if (fs.existsSync('src/docs')) { if (!fs.existsSync('dist/docs')) fs.mkdirSync('dist/docs', { recursive: true }); fs.cpSync('src/docs', 'dist/docs', { recursive: true }); }\"",
     "start": "node dist/server.js"
   },
   "repository": {
@@ -24,6 +24,7 @@
     "node": ">=18"
   },
   "dependencies": {
+    "@hapi/boom": "^10.0.1",
     "@whiskeysockets/baileys": "^7.0.0-rc.9",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
@@ -32,8 +33,8 @@
     "morgan": "^1.10.1",
     "qrcode": "^1.5.4",
     "swagger-ui-express": "^5.0.1",
-    "yaml": "^2.8.2",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "yaml": "^2.8.2"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

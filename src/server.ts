@@ -5,8 +5,8 @@ import whatsappService from "./services/whatsapp.service";
 dotenv.config();
 
 const NODE_ENV = process.env.NODE_ENV || "development";
-const PORT =
-  NODE_ENV === "production" ? process.env.PORT_PROD : process.env.PORT_DEV;
+// O Nixpacks/Hostinger geralmente injeta a variável 'PORT' diretamente.
+const PORT = process.env.PORT || (NODE_ENV === "production" ? process.env.PORT_PROD : process.env.PORT_DEV) || 3000;
 const URL =
   NODE_ENV === "production"
     ? process.env.PROD_SERVER_URL
@@ -15,10 +15,12 @@ const URL =
 async function bootstrap() {
   await whatsappService.connect();
 
-  app.listen(PORT, () => {
+  app.listen(Number(PORT), "0.0.0.0", () => {
     console.log(`🚀 API rodando na porta ${PORT} (${NODE_ENV})`);
-    console.log(`📄 Swagger UI: ${URL}/docs`);
-    console.log(`📦 Swagger JSON: ${URL}/docs.json \n`);
+    if (URL) {
+      console.log(`📄 Swagger UI: ${URL}/docs`);
+      console.log(`📦 Swagger JSON: ${URL}/docs.json \n`);
+    }
   });
 }
 
