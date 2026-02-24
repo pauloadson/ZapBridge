@@ -5,19 +5,28 @@ import makeWASocket, {
 import { Boom } from "@hapi/boom";
 import QRCode from "qrcode";
 import fs from "fs";
+import pino from "pino";
 
 class WhatsAppService {
   private sock: any;
   private isConnected = false;
+  private isConnecting = false;
   private currentQR: string | null = null;
   private qrBase64: string | null = null;
 
   async connect() {
+    if (this.isConnecting) {
+      console.log("⏳ Já existe uma tentativa de conexão em curso...");
+      return;
+    }
+
+    this.isConnecting = true;
     const { state, saveCreds } = await useMultiFileAuthState("auth");
 
     this.sock = makeWASocket({
       auth: state,
       printQRInTerminal: false,
+      logger: pino({ level: "error" }), // Silencia os logs repetitivos do Baileys
     });
 
     this.sock.ev.on("creds.update", saveCreds);
@@ -34,6 +43,7 @@ class WhatsAppService {
 
       if (connection === "open") {
         this.isConnected = true;
+        this.isConnecting = false;
         this.currentQR = null;
         this.qrBase64 = null;
         console.log("✅ WhatsApp conectado!");
@@ -41,12 +51,12 @@ class WhatsAppService {
 
       if (connection === "close") {
         this.isConnected = false;
+        this.isConnecting = false;
 
-        const shouldReconnect =
-          (lastDisconnect?.error as Boom)?.output?.statusCode !==
-          DisconnectReason.loggedOut;
+        const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
+        const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
 
-        console.log("❌ Conexão fechada. Reconectar?", shouldReconnect);
+        console.log(`❌ Conexão fechada. Código: ${statusCode}. Reconectar?`, shouldReconnect);
 
         if (shouldReconnect) {
           console.log("⏳ Aguardando 5 segundos para tentar reconectar...");
