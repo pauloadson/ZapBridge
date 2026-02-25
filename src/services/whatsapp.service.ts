@@ -22,65 +22,87 @@ class WhatsAppService {
   private qrBase64: string | null = null;
   private connectionStatus: 'open' | 'connecting' | 'close' = 'close';
   private sessionDir: string;
+  private isInitializing = false;
 
   constructor() {
     this.sessionDir = path.join(process.cwd(), config.SESSION_ID);
+    console.log(`[WhatsAppService] Iniciando com SESSION_ID: ${config.SESSION_ID} em modo ${config.NODE_ENV}`);
   }
 
   public async init() {
-    const { state, saveCreds } = await useMultiFileAuthState(this.sessionDir);
-    const { version, isLatest } = await fetchLatestBaileysVersion();
-    console.log(`Usando WhatsApp Web v${version.join('.')} (isLatest: ${isLatest})`);
+    if (this.isInitializing) {
+      console.log('[WhatsAppService] Inicialização já em andamento, ignorando...');
+      return;
+    }
 
-    this.sock = makeWASocket({
-      auth: state,
-      logger: pino({ level: 'silent' }) as any,
-      browser: Browsers.macOS('Desktop'),
-      version,
-      syncFullHistory: false,
-    });
+    this.isInitializing = true;
 
-    this.sock.ev.on('creds.update', saveCreds);
+    try {
+      const { state, saveCreds } = await useMultiFileAuthState(this.sessionDir);
+      const { version, isLatest } = await fetchLatestBaileysVersion();
+      console.log(`[WhatsAppService] Usando WhatsApp Web v${version.join('.')} (isLatest: ${isLatest})`);
 
-    this.sock.ev.on('connection.update', async (update: Partial<ConnectionState>) => {
-      const { connection, lastDisconnect, qr } = update;
-
-      if (qr) {
-        this.qr = qr;
-        this.qrBase64 = await QRCode.toDataURL(qr);
-        console.log('\n--- ESCANEIE O QR CODE ABAIXO ---');
-        qrcodeTerminal.generate(qr, { small: true });
+      // Limpa socket anterior se existir
+      if (this.sock) {
+        this.sock.ev.removeAllListeners('connection.update');
+        this.sock.ev.removeAllListeners('creds.update');
       }
 
-      if (connection === 'close') {
-        const error = lastDisconnect?.error as Boom;
-        const statusCode = error?.output?.statusCode;
-        const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
-        
-        console.log(`Conexão fechada. Motivo: ${statusCode}. Reconectando: ${shouldReconnect}`);
-        if (statusCode && statusCode !== 401 && statusCode !== 408) {
-          console.error('Detalhes do erro:', error);
-        }
-        this.connectionStatus = 'close';
-        this.qr = null;
-        this.qrBase64 = null;
+      this.sock = makeWASocket({
+        auth: state,
+        logger: pino({ level: 'silent' }) as any,
+        browser: Browsers.ubuntu('Chrome'),
+        version,
+        syncFullHistory: false,
+        connectTimeoutMs: 60000,
+        printQRInTerminal: false,
+      });
 
-        if (shouldReconnect) {
-          setTimeout(() => this.init(), 5000);
-        } else {
-          console.log('Sessão encerrada pelo usuário. Limpando arquivos...');
-          this.clearSessionFiles();
+      this.sock.ev.on('creds.update', saveCreds);
+
+      this.sock.ev.on('connection.update', async (update: Partial<ConnectionState>) => {
+        const { connection, lastDisconnect, qr } = update;
+
+        if (qr) {
+          this.qr = qr;
+          this.qrBase64 = await QRCode.toDataURL(qr);
+          console.log('\n--- ESCANEIE O QR CODE ABAIXO ---');
+          qrcodeTerminal.generate(qr, { small: true });
         }
-      } else if (connection === 'connecting') {
-        this.connectionStatus = 'connecting';
-        console.log('Conectando ao WhatsApp...');
-      } else if (connection === 'open') {
-        this.connectionStatus = 'open';
-        this.qr = null;
-        this.qrBase64 = null;
-        console.log('ZapBridge: Conexão estabelecida com sucesso!');
-      }
-    });
+
+        if (connection === 'close') {
+          const error = lastDisconnect?.error as Boom;
+          const statusCode = error?.output?.statusCode;
+          const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+          
+          console.log(`[WhatsAppService] Conexão fechada. Motivo: ${statusCode}. Reconectando: ${shouldReconnect}`);
+          
+          this.connectionStatus = 'close';
+          this.qr = null;
+          this.qrBase64 = null;
+
+          if (shouldReconnect) {
+            this.isInitializing = false; // Permite nova tentativa
+            setTimeout(() => this.init(), 5000);
+          } else {
+            console.log('[WhatsAppService] Sessão encerrada. Limpando arquivos...');
+            this.clearSessionFiles();
+          }
+        } else if (connection === 'connecting') {
+          this.connectionStatus = 'connecting';
+          console.log('[WhatsAppService] Conectando ao WhatsApp...');
+        } else if (connection === 'open') {
+          this.connectionStatus = 'open';
+          this.qr = null;
+          this.qrBase64 = null;
+          console.log('ZapBridge: Conexão estabelecida com sucesso!');
+        }
+      });
+    } catch (err) {
+      console.error('[WhatsAppService] Erro na inicialização:', err);
+    } finally {
+      this.isInitializing = false;
+    }
   }
 
   public async sendMessage(
@@ -155,8 +177,13 @@ class WhatsAppService {
 
   public async restart() {
     if (this.sock) {
+      // Remove listeners para que o evento 'close' não dispare o reconnect via setTimeout
+      this.sock.ev.removeAllListeners('connection.update');
       this.sock.end(undefined);
     }
+    this.connectionStatus = 'close';
+    this.qr = null;
+    this.qrBase64 = null;
     await this.init();
   }
 
