@@ -32,10 +32,10 @@ O projeto foi desenvolvido para facilitar integrações, automações e notifica
 ### 3. Conexão Estável
 - **Versionamento Dinâmico**: Busca automaticamente a versão mais recente do WhatsApp Web para evitar erros de conexão (como o erro 405).
 - **Emulação de Browser**: Utiliza perfis de browser modernos (Desktop) para maior compatibilidade.
-- **Gerenciamento de Estado**: Persistência eficiente de credenciais utilizando `MultiFileAuthState`.
+- **Ambientes Isolados**: Suporte nativo para configurações distintas de Desenvolvimento e Produção no mesmo arquivo `.env`.
 
 ### 4. Segurança
-- **Autenticação via Bearer Token**: Proteção de endpoints sensíveis (Sessão e Mensagens) utilizando uma chave de API configurável.
+- **Autenticação via Bearer Token**: Proteção de endpoints sensíveis (Sessão e Mensagens) utilizando uma chave de API configurável por ambiente.
 
 ### 5. Monitoramento
 - **Health Check**: Endpoint para verificar a integridade e o uptime do serviço.
@@ -64,7 +64,19 @@ Crie um arquivo `.env` baseado no `.env.example`:
 ```bash
 cp .env.example .env
 ```
-Edite o arquivo `.env` e defina sua `API_KEY` e outras configurações.
+Edite o arquivo `.env`. O sistema selecionará automaticamente as variáveis com base no `NODE_ENV` (`development` ou `production`):
+
+```env
+NODE_ENV=development
+
+# Variáveis usadas em desenvolvimento
+API_KEY_DEV=chave_dev
+BASE_URL_DEV=http://localhost:3000
+
+# Variáveis usadas em produção
+API_KEY_PROD=chave_prod_super_segura
+BASE_URL_PROD=https://sua-api.com
+```
 
 ### Execução
 
@@ -81,9 +93,9 @@ npm start
 
 ## 📄 Documentação (Swagger)
 
-A documentação interativa da API está disponível em:
-- **UI**: `http://localhost:3000/docs`
-- **JSON**: `http://localhost:3000/docs.json`
+A documentação interativa da API adapta-se automaticamente à sua `BASE_URL` configurada:
+- **UI**: `http://localhost:3000/docs` (ou sua URL de produção)
+- **JSON**: `/docs.json`
 
 ## 🔐 Autenticação
 

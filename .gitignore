@@ -145,3 +145,6 @@ vite.config.ts.timestamp-*
 
 # Auth
 auth/
+zapbridge_session
+zapbridge_session_dev
+zapbridge_session_prod

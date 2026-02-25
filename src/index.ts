@@ -1,12 +1,12 @@
-import express from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
-import path from 'path';
-import { config } from './config/env';
-import routes from './routes';
-import { whatsappService } from './services/whatsapp.service';
-import swaggerUi from 'swagger-ui-express';
-import swaggerJsdoc from 'swagger-jsdoc';
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import path from "path";
+import { config } from "./config/env";
+import routes from "./routes";
+import { whatsappService } from "./services/whatsapp.service";
+import swaggerUi from "swagger-ui-express";
+import swaggerJsdoc from "swagger-jsdoc";
 
 const app = express();
 
@@ -17,23 +17,23 @@ app.use(express.json());
 // Swagger
 const swaggerOptions: swaggerJsdoc.Options = {
   definition: {
-    openapi: '3.0.0',
+    openapi: "3.0.0",
     info: {
-      title: 'ZapBridge API',
-      version: '1.0.0',
-      description: 'API para envio de mensagens via WhatsApp com Baileys',
+      title: "ZapBridge API",
+      version: "1.0.0",
+      description: "API para envio de mensagens via WhatsApp com Baileys",
     },
     servers: [
       {
-        url: `http://localhost:${config.PORT}/api`,
+        url: `${config.BASE_URL}/api`,
       },
     ],
     components: {
       securitySchemes: {
         bearerAuth: {
-          type: 'http',
-          scheme: 'bearer',
-          bearerFormat: 'JWT',
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT",
         },
       },
     },
@@ -43,20 +43,20 @@ const swaggerOptions: swaggerJsdoc.Options = {
       },
     ],
   },
-  apis: [path.join(__dirname, './routes/*.{ts,js}')],
+  apis: [path.join(__dirname, "./routes/*.{ts,js}")],
 };
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
-app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-app.get('/docs.json', (req, res) => {
-  res.setHeader('Content-Type', 'application/json');
+app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.get("/docs.json", (req, res) => {
+  res.setHeader("Content-Type", "application/json");
   res.send(swaggerSpec);
 });
 
 // Routes
-app.use('/api', routes);
+app.use("/api", routes);
 
 app.listen(config.PORT, () => {
-  console.log(`ZapBridge running on http://localhost:${config.PORT}`);
-  console.log(`Documentation: http://localhost:${config.PORT}/docs`);
+  console.log(`ZapBridge running on ${config.BASE_URL}`);
+  console.log(`Documentation: ${config.BASE_URL}/docs`);
 });
